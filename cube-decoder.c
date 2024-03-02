@@ -5,7 +5,15 @@
 
 #include "blowfish.h"
 
+typedef unsigned int DWORD;
 
+// Helper function for converting an array of four BYTEs into a 32-bit integer
+DWORD byte_to_dword(BYTE *b)
+{
+    return (b[0]) | (b[1] << 8) | (b[2] << 16) | (b[3] << 24);
+}
+
+// Helper function for calculating size of a file
 long int fsize(FILE *f) {
     long int original, size;
     original = ftell(f);
@@ -15,6 +23,52 @@ long int fsize(FILE *f) {
     return size;
 }
 
+// Helper function for checking for string suffix
+int ends_with(char *subject, char *ending) {
+	int subjectlength = strlen(subject);
+	int endlength = strlen(ending);
+	if (endlength > subjectlength) {
+		return 0;
+	}
+	return 0 == strncmp(subject + subjectlength - endlength, ending, endlength);
+}
+
+// Helper function to determine file extension from a given file name
+char *get_file_extension(char path[])
+{
+    char *result;
+    int i, n;
+
+    assert(path != NULL);
+    n = strlen(path);
+    i = n - 1;
+    while ((i > 0) && (path[i] != '.') && (path[i] != '/') && (path[i] != '\\')) {
+        i--;
+    }
+    if ((i > 0) && (i < n - 1) && (path[i] == '.') && (path[i - 1] != '/') && (path[i - 1] != '\\')) {
+        result = path + i;
+    }
+    else {
+        result = path + n;
+    }
+    return result;
+}
+
+// Safe strncpy with null termination
+size_t strlcpy(char* dst, const char* src, size_t bufsize)
+{
+    size_t srclen = strlen(src);
+    size_t result = srclen; /* Result is always the length of the src string */
+    if (bufsize>0)
+    {
+        if (srclen >= bufsize)
+            srclen = bufsize - 1;
+        if (srclen>0)
+            memcpy(dst, src, srclen);
+        dst[srclen] = '\0';
+    }
+    return result;
+}
 
 int main(int argc, char **argv) {
     char cubepro_key[] = "221BBakerMycroft";
