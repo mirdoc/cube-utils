@@ -11,6 +11,8 @@ The cube-encoder in this project is a faster alternative to CodeX, written in pl
 * 11 MB file with CodeX64.exe on Windows on a 2.4 GHz Xeon E5620: 8 minutes and 14 seconds
 * 11 MB file with cubepro-encoder on Linux on a 2.1 GHz Opteron 6172: 1.2 seconds
 
+This is a fork of [cube-utils by fritzw](https://github.com/fritzw/cube-utils) with some patches to improve functionality.
+
 ## Installation
 
 * **Windows:** Just download the `.exe` file you need from the [releases page](https://github.com/mird-oc/cube-utils/releases) and place them where you like.
