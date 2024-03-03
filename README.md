@@ -13,10 +13,10 @@ The cube-encoder in this project is a faster alternative to CodeX, written in pl
 
 ## Installation
 
-* **Windows:** Just download the `.exe` file you need from the [releases page](https://github.com/fritzw/cube-utils/releases) and place them where you like.
+* **Windows:** Just download the `.exe` file you need from the [releases page](https://github.com/mird-oc/cube-utils/releases) and place them where you like.
 * **Linux/Mac:** Clone the repository and run `make` to build. You need to install the build tools for your operating system first (e.g. `sudo apt-get install build-essential` on Ubuntu).
 ```
-git clone 'https://github.com/fritzw/cube-utils.git'
+git clone 'https://github.com/mirdoc/cube-utils.git'
 cd cube-utils
 make all
 make test
@@ -32,7 +32,7 @@ After this you will have three files called `cubepro-encoder`, `cube3-encoder`, 
 
 ## Usage
 
-<img src="https://raw.githubusercontent.com/fritzw/cube-utils/master/windows-screenshot.png"/>
+<img src="https://raw.githubusercontent.com/mirdoc/cube-utils/master/windows-screenshot.png"/>
 
 * Option 1: Just drop the `.bfb` file on the correct encoder program with your mouse.
 * Option 2: Run the encoder form the command line as follows:
