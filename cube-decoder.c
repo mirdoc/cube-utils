@@ -112,34 +112,37 @@ int main(int argc, char **argv) {
     
     if (userkey == NULL)  {
         printf("Usage:\n"
-               "    %s inputfile [outputfile]\n"
-               "    outputfile defaults to inputfile with the file extension changed to .bfb\n"
-               "    inputfile file extension must be .cubex or .cube or .cube3 or .cubepro\n", argv[0]);
+            "    %s inputfile [outputfile]\n"
+            "    outputfile defaults to inputfile with the file extension changed to .bfb\n"
+            "    inputfile file extension must be .cubex or .cube or .cube3 or .cubepro\n", argv[0]);
         return 1;
     }
 
     // Load input file
     FILE *infile = fopen(infilename, "rb");
     if (infile == NULL) {
-        perror("Unable to open input file");
+        printf("ERROR: Unable to open input file %s\n", infilename);
         return 2;
     }
+    printf("Reading data from %s... ", infilename);
     infilesize = fsize(infile);
     if (infilesize < 0) {
-        perror("Unable to determine size of input file");
+        printf(" Failed!\nERROR: Unable to determine size of input file %s\n", infilename);
         return 3;
     }
     BYTE *data = malloc(infilesize);
     if (data == NULL) {
-        perror("Unable to allocate memory for input file");
+        printf(" Failed!\nERROR: Unable to allocate memory for input file %s\n", infilename);
         return 4;
     }
     readcount = fread(data, 1, infilesize, infile);
     if (readcount != infilesize) {
-        printf("Unable to read the whole input file: %zd != %zd\n", readcount, infilesize);
+        printf(" Failed!\nERROR: Unable to read the whole input file %s, (Bytes Read = %zd, Bytes Total = %zd)\n", infilename, readcount, infilesize);
         return 5;
     }
     fclose(infile);
+
+    printf(" Success!\n");
 
     // Check to see if this is the "new" format .cubepro file
     // this newer format is what appears to be a simple uncompressed file archive which allows 
@@ -159,6 +162,7 @@ int main(int argc, char **argv) {
     DWORD storedfile_filesize = 0;
 
     if (byte_to_dword(&data[4]) == infilesize) {
+        printf("Input file appears to be new format, searching for encrypted gcode data chunk... ");
         char storedfile_filename[260] = "";
         int gcodefile_found = 0;
 
@@ -180,10 +184,12 @@ int main(int argc, char **argv) {
         } while (!gcodefile_found && i <= infilesize);
 
         if (gcodefile_found) {
+            printf("Success!\n");
             offset = i - storedfile_filesize;
             infilesize = storedfile_filesize;
         }
         else {
+            printf("Failed!\nERROR: Failed to find encrypted gcode data chunk\n");
             return 8;
         }
     }
@@ -192,30 +198,34 @@ int main(int argc, char **argv) {
     }
     
     // Decrypt data
-    blowfish_key_setup((BYTE*) userkey, &key, strlen(userkey));
+    printf("Decrypting... ");
+    blowfish_key_setup((BYTE*)userkey, &key, strlen(userkey));
     for (i = offset; i < offset + infilesize; i += 8) {
         blowfish_decrypt(&data[i], &data[i], &key, 1);
     }
+    printf("Success!\n");
 
     // Remove padding
     BYTE pad = data[offset + infilesize - 1];
     if (pad > 8) {
-        printf("Decoding error: Invalid padding. Make sure that this is a valid encoded file.\n");
+        printf("WARNING: Invalid padding size detected. This may not be a valid encoded file.\n");
     }
     outfilesize = infilesize - pad;
 
     // Save data to output file
     FILE *outfile = fopen(outfilename, "wb+");
     if (outfile == NULL) {
-        perror("Unable to open output file");
+        printf("ERROR: Unable to open output file");
         return 6;
     }
+    printf("Writing decrypted data to %s... ", outfilename);
     writecount = fwrite(&data[offset], 1, outfilesize, outfile);
     if (writecount != outfilesize) {
-        printf("Unable to write the whole output file: %zd != %zd\n", writecount, outfilesize);
+        printf("Failed!\nERROR: Unable to write the whole output file: %zd != %zd\n", writecount, outfilesize);
         return 7;
     }
     fclose(outfile);
+    printf("Success!\n");
 
     return 0;
 }
