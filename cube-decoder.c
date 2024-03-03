@@ -71,41 +71,52 @@ size_t strlcpy(char* dst, const char* src, size_t bufsize)
 }
 
 int main(int argc, char **argv) {
-    char cubepro_key[] = "221BBakerMycroft";
-    char cubex_key[] = "kWd$qG*25Xmgf-Sg";
-    char *userkey = cubepro_key;
+    char cubepro_key[] = "221BBakerMycroft";    // Key used to decrypt .cubepro / .cube3 / .cube files
+    char cubex_key[] = "kWd$qG*25Xmgf-Sg";      // Key used to decrypt .cubex files
+
+    char *userkey;
     BLOWFISH_KEY key;
-    char *infilename, *outfilename;
+
+    char *infilename, *outfilename, *infilenameext;
     size_t outfilesize;
     int i;
 
     /* TODO:
-    Implement flag to enable CubeX encoding?
-    Implement decoding of .cubepro/.cubex files?
     Implement legacy mode for compatibility with CodeX:
     argv[0] [CUBEPRO | CUBEX] [ENCODE | DECODE | RECODE] inputfile outputfile
     */
 
-    // "Parse" arguments
-    if (argc == 4 && strcmp("-x", argv[1]) == 0) {
-        userkey = cubex_key;
-        infilename = argv[2];
-        outfilename = argv[3];
-    } else if (argc == 3) {
-        infilename = argv[1];
-        outfilename = argv[2];
-    } else {
-        printf("Usage:\n"
-               "    %s [-x] inputfile outputfile\n"
-               "    Normally, the inputfile will be decoded as a .cubepro file.\n"
-               "    If the file name ends in .cubex or the -x parameter is present,i\n"
-               "    it will be decoded as a .cubex file instead.\n",
-               argv[0]);
-        return 1;
-    }
+    userkey = NULL;
 
-    if (strcmp(infilename + strlen(infilename) - 6, ".cubex") == 0) {
-        userkey = cubex_key;
+    // "Parse" arguments
+    if (argc >= 2) {
+        infilename = argv[1];
+        infilenameext = get_file_extension(infilename);
+
+        // Determine which decryption key to use
+        if (strcmp(infilenameext, ".cubepro") == 0 || strcmp(infilenameext, ".cube3") == 0 || strcmp(infilenameext, ".cube") == 0) {
+            userkey = cubepro_key;
+        }
+        else if (strcmp(infilenameext, ".cubex") == 0) {
+            userkey = cubex_key;
+        }
+
+        if (argc == 2) {
+            outfilename = malloc(strlen(infilename));
+            strlcpy(outfilename, infilename, strlen(infilename) - strlen(infilenameext) + 1);
+            strcat(outfilename, ".bfb");
+        }
+        else {
+            outfilename = argv[2];
+        }
+    } 
+    
+    if (userkey == NULL)  {
+        printf("Usage:\n"
+               "    %s inputfile [outputfile]\n"
+               "    outputfile defaults to inputfile with the file extension changed to .bfb\n"
+               "    inputfile file extension must be .cubex or .cube or .cube3 or .cubepro\n", argv[0]);
+        return 1;
     }
 
     // Load input file
