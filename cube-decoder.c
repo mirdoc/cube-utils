@@ -78,8 +78,7 @@ int main(int argc, char **argv) {
     BLOWFISH_KEY key;
 
     char *infilename, *outfilename, *infilenameext;
-    size_t outfilesize;
-    int i;
+    long int outfilesize, infilesize, readcount, writecount, offset, i;
 
     /* TODO:
     Implement legacy mode for compatibility with CodeX:
@@ -125,7 +124,7 @@ int main(int argc, char **argv) {
         perror("Unable to open input file");
         return 2;
     }
-    size_t infilesize = fsize(infile);
+    infilesize = fsize(infile);
     if (infilesize < 0) {
         perror("Unable to determine size of input file");
         return 3;
@@ -135,24 +134,73 @@ int main(int argc, char **argv) {
         perror("Unable to allocate memory for input file");
         return 4;
     }
-    size_t readcount = fread(data, 1, infilesize, infile);
+    readcount = fread(data, 1, infilesize, infile);
     if (readcount != infilesize) {
         printf("Unable to read the whole input file: %zd != %zd\n", readcount, infilesize);
         return 5;
     }
     fclose(infile);
 
+    // Check to see if this is the "new" format .cubepro file
+    // this newer format is what appears to be a simple uncompressed file archive which allows 
+    // multiple files to be bundled together including an XML file with build information, several 
+    // preview images, a checksum file of some sort, and and the actual encrypted gcode file we
+    // want to find the offset of the archive file  with a .cubepro file in it which can then be 
+    // processed by the decryption routine
+
+    // New format has a header
+    //  - DWORD = number of files in the archive
+    //  - DWORD = size of the archive
+    //  - WORD  = x0108 - size of the header chunk that precedes each file
+
+    // Let's check the second DWORD and compare against the archive's file size and if this matches
+    // assume we're dealing with a newer format file
+
+    DWORD storedfile_filesize = 0;
+
+    if (byte_to_dword(&data[4]) == infilesize) {
+        char storedfile_filename[260] = "";
+        int gcodefile_found = 0;
+
+        i = 10;
+
+        do {
+            // Each file in the archive is preceded by chunk of data containing size and filename
+            //  - DWORD - the size of the stored file
+            //  - char[260] - the original name of the stored file (null terminated/padded)
+
+            storedfile_filesize = byte_to_dword(&data[i]);
+            i += 4;
+            strncpy(storedfile_filename, (char*) &data[i], 260);
+            i += storedfile_filesize + 260;
+            
+            // If the storedfile_'s file name ends in .cubepro then we've found what we're looking for...
+            gcodefile_found = ends_with(storedfile_filename, ".cubepro") || ends_with(storedfile_filename, ".cube3");
+
+        } while (!gcodefile_found && i <= infilesize);
+
+        if (gcodefile_found) {
+            offset = i - storedfile_filesize;
+            infilesize = storedfile_filesize;
+        }
+        else {
+            return 8;
+        }
+    }
+    else {
+        offset = 0;
+    }
+    
     // Decrypt data
     blowfish_key_setup((BYTE*) userkey, &key, strlen(userkey));
-    for (i = 0; i < infilesize; i += 8) {
+    for (i = offset; i < offset + infilesize; i += 8) {
         blowfish_decrypt(&data[i], &data[i], &key, 1);
     }
 
     // Remove padding
-    BYTE pad = data[infilesize - 1];
+    BYTE pad = data[offset + infilesize - 1];
     if (pad > 8) {
         printf("Decoding error: Invalid padding. Make sure that this is a valid encoded file.\n");
-        //return 8;
     }
     outfilesize = infilesize - pad;
 
@@ -162,7 +210,7 @@ int main(int argc, char **argv) {
         perror("Unable to open output file");
         return 6;
     }
-    size_t writecount = fwrite(data, 1, outfilesize, outfile);
+    writecount = fwrite(&data[offset], 1, outfilesize, outfile);
     if (writecount != outfilesize) {
         printf("Unable to write the whole output file: %zd != %zd\n", writecount, outfilesize);
         return 7;
